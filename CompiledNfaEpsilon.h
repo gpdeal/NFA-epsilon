@@ -22,13 +22,15 @@ public:
    bool evaluate(string);
 
 private:
-   unordered_map<TransKey*, list<int>*> transMap;
+   unordered_map<TransKey, list<int>*> transMap;
    unordered_set<int> currentNodes;
    unordered_set<int> goalNodes;
+   int startNode;
 
    void traverseEpsilons(int);
    bool isInEndState() const;
    void repopulateCurrentNodes(const list<int>&);
+   void followTransitions(list<int>&, char);
 
 };
 
