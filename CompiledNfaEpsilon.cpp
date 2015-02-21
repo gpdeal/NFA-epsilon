@@ -3,20 +3,21 @@
 using namespace std;
 
 
-/* pseudocode implementation:
+/* initial pseudocode implementation:
 
 CompiledNfaEpsilon(FiniteStateMachine nfa) {
-    for (trans in nfa.transitions) {
+    for (Transition trans in nfa.transitions) {
         key = new TransKey(trans.source, trans.transitionChar);
         
         if (transMap[key] == nullptr) {
             transMap[key] = new list<int>;
         }
         
-        transMap[key].insert(trans.destination);
+        transMap.insert(trans.destination);
     }
 
     currentNodes.add(nfa.startNode);
+    goalNodes = nfa.goalNodes;
     traverseEpsilons(nfa.startNode);
 }
 */
@@ -27,40 +28,27 @@ CompiledNfaEpsilon::CompiledNfaEpsilon(FiniteStateMachine& nfa) {
    for (list<Transition>::iterator it = nfa.transitions.begin(); 
       it != nfa.transitions.end(); it++) {
 
-      // create key from source and transition character
-      TransKey* key = new TransKey(it->source, it->transitionChar);
+         // create key from source and transition character
+         TransKey key(it->source, it->transitionChar);
             
-      // if no transitions from that node on that character exist yet, create a
-      // new list to hold any such transitions
+         // if no transitions from that node on that character exist yet, create a
+         // new list to hold any such transitions
+         list<int>* destList;
+         if (transMap.count(key) == 0) {
+            destList = new list<int>;
+            transMap[key] = destList;
+         } else {
+            destList = transMap[key];
+         }
 
-      /*
-      FIRST ATTEMPT using operator[key]
-
-      list<int>* destList = transMap[key];
-      if (destList == nullptr) {
-         destList = new list<int>;
-      }
-      list<int>* destList2 = transMap[key];*/
-
-      
-      // SECOND ATTEMPT using count(key)
-      
-      list<int>* destList;
-      if (transMap.count(key) == 0) {
-         destList = new list<int>;
-         transMap[key] = destList;
-      } else {
-         destList = transMap[key];
-      }
-
-      // add the transition to the list in the map
-      destList->push_front(it->destination);
-      int x;
-      x = 5;
+         // add the transition to the list in the map
+         destList->push_front(it->destination);
    }
    
-   currentNodes.insert(nfa.startNode);
-   traverseEpsilons(nfa.startNode);
+   startNode = nfa.startNode;
+   for (auto it = nfa.goalNodes.begin(); it != nfa.goalNodes.end(); it++) {
+      goalNodes.insert(*it);
+   }
 }
 
 
@@ -69,7 +57,7 @@ CompiledNfaEpsilon::~CompiledNfaEpsilon(void) {
 
 
 
-/* pseudocode implementation:
+/* initial pseudocode implementation:
 
 void traverseEpsilons(int node) {
     TransKey key(node, 0);
@@ -87,14 +75,15 @@ void traverseEpsilons(int node) {
 
 void CompiledNfaEpsilon::traverseEpsilons(int node) {
    TransKey key(node, 0);
-   list<int>* transList = transMap[&key];
+
+   if (transMap.count(key) == 1) {
+      list<int>* transList = transMap[key];
     
-   if (transList != nullptr) {
       for (list<int>::iterator it = transList->begin(); 
          it !=transList->end(); it++) {
 
-         currentNodes.insert(node);
-         traverseEpsilons(node);
+         currentNodes.insert(*it);
+         traverseEpsilons(*it);
       }
    }
 }
@@ -146,26 +135,51 @@ bool evaluate(string str) {
 */
 
 bool CompiledNfaEpsilon::evaluate(string input) {
-   for (string::iterator charIt = input.begin(); charIt != input.end(); charIt++) {
-      list<int> newCurrentSet;
+   currentNodes.insert(startNode);
+   traverseEpsilons(startNode);
 
-      for (auto nodeIt = currentNodes.begin(); nodeIt != currentNodes.end(); nodeIt++) {
-         int node = *nodeIt;
-         currentNodes.erase(node);
-         TransKey key(node, *charIt);
-         list<int>* destList = transMap[&key];
+   // for each character in the input string
+   for (string::iterator it = input.begin(); it != input.end(); it++) {
+      
+      // holds what will be the new set of current nodes once all transitions
+      // on the current character are processed
+      list<int> newCurrentNodes;
 
-         for (list<int>::iterator destIt = destList->begin(); 
-            destIt != destList->end(); destIt++) {
-               newCurrentSet.push_front(*destIt);
-         }
-      }
-
-      repopulateCurrentNodes(newCurrentSet);
+      followTransitions(newCurrentNodes, *it);
+      repopulateCurrentNodes(newCurrentNodes);
    }
 
-   return isInEndState();
+   bool success = isInEndState();
+   currentNodes.clear();   
+   return success;
 }
+
+
+void CompiledNfaEpsilon::followTransitions(list<int>& newCurrentNodes, char currentChar) {
+   auto it = currentNodes.begin();
+   int setSize = currentNodes.size();
+   // for each node that is currently occupied
+   for (int i = 0; i < setSize; i++) {
+      int node = *it;
+      it++;
+
+      currentNodes.erase(node);
+      TransKey key(node, currentChar);
+      
+      // get the list of all transitions from the node on the current character
+      list<int>* destList = transMap[key];
+
+      if (destList != nullptr) {
+         // add each of the destination nodes in the list to the new list of
+         // currently occupied nodes
+         for (list<int>::iterator destIt = destList->begin(); 
+            destIt != destList->end(); destIt++) {
+               newCurrentNodes.push_front(*destIt);
+         }
+      }
+   }
+}
+
 
 
 
@@ -181,8 +195,7 @@ bool CompiledNfaEpsilon::isInEndState() const {
 
 
 void CompiledNfaEpsilon::repopulateCurrentNodes(const list<int>& nodeList) {
-   for (list<int>::iterator nodeIt = nodeList.begin(); 
-      nodeIt != nodeList.end(); nodeIt++) {
+   for (auto nodeIt = nodeList.cbegin(); nodeIt != nodeList.cend(); nodeIt++) {
 
          if (currentNodes.count(*nodeIt) == 0) {
             currentNodes.insert(*nodeIt);
