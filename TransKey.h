@@ -9,8 +9,10 @@ struct TransKey {
       transitionChar = c;
    }
 
-   bool operator==(const TransKey& other) {
-      return (source == other.source && transitionChar == other.transitionChar);
+
+   bool operator==(const TransKey& other) const {
+      return (source == other.source 
+         && transitionChar == other.transitionChar);
    }
 
 };
@@ -25,11 +27,11 @@ namespace std {
 
    template <>
    struct hash<TransKey> {
-      size_t operator()(TransKey* k) const {
+      size_t operator()(const TransKey& k) const {
          using std::hash;
 
-         return ((hash<int>()(k->source)
-            ^ (hash<char>()(k->transitionChar) << 1)) >> 1);
+         return ((hash<int>()(k.source)
+            ^ (hash<char>()(k.transitionChar) << 1)) >> 1);
       }
    };
 
