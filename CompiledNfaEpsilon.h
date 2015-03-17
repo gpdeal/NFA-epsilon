@@ -50,13 +50,22 @@ private:
    unordered_set<int> goalNodes;
    int startNode;
 
+   void addTransitionToMap(const TransKey&, const Transition&);
+
    // Causes the object to occupy the full epsilon enclosure of the passed node
    void traverseEpsilons(int);
+
+   list<int>* getEpsilonTransitions(int);
+
+   void processDestinationNodes(list<int>*, queue<int>&, unordered_set<int>&);
+
    // Populates the CurrentNodes set with the ints in the passed list
    void repopulateCurrentNodes(const list<int>&);
    // Causes the object to traverse any transitions on the passed character that
    // exist in any of the currently occupied nodes
    void applyCharacter(char);
+
+   void followTransitions(const TransKey&, list<int>&);
    // Sets the set of current nodes to the ints in the passed set
    void setCurrentState(const set<int>&);
 
