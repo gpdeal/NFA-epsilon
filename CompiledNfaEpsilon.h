@@ -20,6 +20,7 @@
 #include "TransKey.h"
 #include "FiniteStateMachine.h"
 #include "NodeSet.h"
+#include "DfaConversionPackage.h"
 
 using namespace std;
 
@@ -77,6 +78,8 @@ private:
    // Returns a set of chars representing all characters used in transitions by
    // the NFA
    set<char> getAlphabet() const;
+
+   void makeNewNode(DfaConversionPackage&);
 
 };
 
