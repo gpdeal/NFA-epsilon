@@ -19,17 +19,17 @@ using namespace std;
 
 CompiledNfaEpsilon::CompiledNfaEpsilon(const FiniteStateMachine& nfa) {
    
-   for (auto transition = nfa.transitions.cbegin(); 
-      transition != nfa.transitions.cend(); transition++) {
+   for (auto transitionIterator = nfa.transitions.cbegin(); 
+      transitionIterator != nfa.transitions.cend(); transitionIterator++) {
 
-         TransKey key(transition->source, transition->transitionChar);            
-         addTransitionToMap(key, *transition);
+         TransKey key(transitionIterator->source, transitionIterator->transitionChar);            
+         addTransitionToMap(key, *transitionIterator);
    }
    
    startNode = nfa.startNode;
 
-   for (auto node = nfa.goalNodes.begin(); node != nfa.goalNodes.end(); node++) {
-      goalNodes.insert(*node);
+   for (auto nodeIterator = nfa.goalNodes.begin(); nodeIterator != nfa.goalNodes.end(); nodeIterator++) {
+      goalNodes.insert(*nodeIterator);
    }
 }
 
@@ -52,8 +52,9 @@ void CompiledNfaEpsilon::addTransitionToMap(const TransKey& key, const Transitio
 // pieces of memory which would not otherwise be taken care of
 
 CompiledNfaEpsilon::~CompiledNfaEpsilon(void) {
-   for (auto it = transMap.begin(); it != transMap.end(); it++) {
-      delete it->second;
+   for (auto transitionIterator = transMap.begin(); 
+      transitionIterator != transMap.end(); transitionIterator++) {
+         delete transitionIterator->second;
    }
 }
 
@@ -96,12 +97,12 @@ void CompiledNfaEpsilon::processDestinationNodes(
    list<int>* destinations, queue<int>& nodeQueue, unordered_set<int>& processed) {
 
    if (destinations != nullptr) {
-      for (auto node = destinations->begin(); node != destinations->end(); node++) {
-         if (processed.count(*node) == 0) {
-            nodeQueue.push(*node);
-            processed.insert(*node);
+      for (auto nodeIterator = destinations->begin(); nodeIterator != destinations->end(); nodeIterator++) {
+         if (processed.count(*nodeIterator) == 0) {
+            nodeQueue.push(*nodeIterator);
+            processed.insert(*nodeIterator);
          }
-            currentNodes.insert(*node);
+            currentNodes.insert(*nodeIterator);
       }
    }
 
@@ -119,8 +120,8 @@ bool CompiledNfaEpsilon::evaluate(string input) {
    currentNodes.insert(startNode);
    traverseEpsilons(startNode);
 
-   for (string::iterator currentChar = input.begin(); currentChar != input.end(); currentChar++) {
-      applyCharacter(*currentChar);
+   for (string::iterator charIterator = input.begin(); charIterator != input.end(); charIterator++) {
+      applyCharacter(*charIterator);
    }
 
    bool success = isInEndState();
@@ -214,12 +215,15 @@ FiniteStateMachine CompiledNfaEpsilon::nfaToDfa(const FiniteStateMachine& nfa) {
 // equivalent to the internally stored NFA and returns it.
 
 FiniteStateMachine CompiledNfaEpsilon::convertToDfa() {
+   DfaConversionPackage convInfo(getAlphabet());
+   
+   /*
    FiniteStateMachine dfa;
    unordered_map<NodeSet, int> dfaNodes;
    queue<NodeSet> unprocessedNodes;
    set<char> alphabet = getAlphabet();
    NodeSet nfaState;
-   int nodeCount = 1;
+   int nodeCount = 1;*/
 
    currentNodes.clear();
    currentNodes.insert(startNode);
@@ -228,43 +232,50 @@ FiniteStateMachine CompiledNfaEpsilon::convertToDfa() {
    NodeSet dfaStartNode(getCurrentNodes());
 
    // create DFA's starting node
-   dfaNodes.insert(make_pair(dfaStartNode, 1));
-   unprocessedNodes.push(dfaStartNode);
-   dfa.nodes.insert(1);
-   dfa.startNode = 1;
-   if (isInEndState()) { dfa.goalNodes.insert(1); }
-   nodeCount = 1;
+   convInfo.dfaNodes.insert(make_pair(dfaStartNode, 1));
+   convInfo.unprocessedNodes.push(dfaStartNode);
+   convInfo.dfa.nodes.insert(1);
+   convInfo.dfa.startNode = 1;
+   if (isInEndState()) { convInfo.dfa.goalNodes.insert(1); }
+   convInfo.nodeCount = 1;
 
    // for each possible set of states in the NFA
-   while (unprocessedNodes.size() > 0) {
-      nfaState = unprocessedNodes.front();
-      unprocessedNodes.pop();
+   while (convInfo.unprocessedNodes.size() > 0) {
+      convInfo.nfaState = convInfo.unprocessedNodes.front();
+      convInfo.unprocessedNodes.pop();
 
       // for each character in the alphabet
-      for (auto it = alphabet.begin(); it != alphabet.end(); it++) {
-         setCurrentState(nfaState.nodes);
+      for (auto it = convInfo.alphabet.begin(); it != convInfo.alphabet.end(); it++) {
+         setCurrentState(convInfo.nfaState.nodes);
          applyCharacter(*it);
          NodeSet newNode(getCurrentNodes());
 
          if (!newNode.nodes.empty()) {
             // if a new set of states is encountered, add it as a new DFA node
-            if (dfaNodes.count(newNode) == 0) {
-               nodeCount++;
-               dfaNodes.insert(make_pair(newNode, nodeCount));
-               dfa.nodes.insert(nodeCount);
-               if (isInEndState()) { dfa.goalNodes.insert(nodeCount); }
-               unprocessedNodes.push(newNode);
+            if (convInfo.dfaNodes.count(newNode) == 0) {
+               convInfo.nodeCount++;
+               convInfo.dfaNodes.insert(make_pair(newNode, convInfo.nodeCount));
+               convInfo.dfa.nodes.insert(convInfo.nodeCount);
+               if (isInEndState()) { convInfo.dfa.goalNodes.insert(convInfo.nodeCount); }
+               convInfo.unprocessedNodes.push(newNode);
             }
 
             // create a new transition in the DFA
-            Transition newTrans(dfaNodes[nfaState], *it, dfaNodes[newNode]);
-            dfa.transitions.push_front(newTrans);
+            Transition newTrans(convInfo.dfaNodes[convInfo.nfaState], *it, convInfo.dfaNodes[newNode]);
+            convInfo.dfa.transitions.push_front(newTrans);
          }
       }
    }
 
-   return dfa;
+   return convInfo.dfa;
 }
+
+
+void CompiledNfaEpsilon::makeNewNode(DfaConversionPackage& convInfo) {
+   
+
+}
+
 
 
 // setCurrentState
